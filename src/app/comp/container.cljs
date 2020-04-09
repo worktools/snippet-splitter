@@ -7,23 +7,36 @@
             [reel.comp.reel :refer [comp-reel]]
             [respo-md.comp.md :refer [comp-md]]
             [app.config :refer [dev?]]
-            [composer.core :refer [render-markup extract-templates]]
-            [shadow.resource :refer [inline]]
             [cljs.reader :refer [read-string]]
             [cumulo-util.core :refer [id! unix-time!]]
-            [respo.comp.inspect :refer [comp-inspect]]))
+            [respo.comp.inspect :refer [comp-inspect]]
+            [clojure.string :as string]
+            ["copy-text-to-clipboard" :as copy]))
 
 (defcomp
  comp-container
- (reel view-model on-action)
+ (reel)
  (let [store (:store reel)
+       cursor []
        states (:states store)
-       templates (extract-templates (read-string (inline "composer.edn")))]
+       state (or (:data states) {:draft ""})
+       code (js/JSON.stringify (clj->js (string/split (:draft state) "\n")) nil 2)]
    (div
-    {}
-    (render-markup
-     (get templates "container")
-     {:data view-model, :templates templates, :level 1}
-     (fn [d! op param options] (on-action d! op param options view-model)))
+    {:style (merge ui/global ui/fullscreen ui/column)}
+    (div
+     {:style (merge ui/row-parted {:padding 8})}
+     (span nil)
+     (button {:style ui/button, :inner-text "Copy", :on-click (fn [e d!] (copy code))}))
+    (div
+     {:style (merge ui/expand ui/row)}
+     (textarea
+      {:style (merge ui/expand ui/textarea {:font-family ui/font-code}),
+       :value (:draft state),
+       :on-input (fn [e d!] (d! cursor (assoc state :draft (:value e)))),
+       :placeholder "code to split..."})
+     (textarea
+      {:style (merge ui/expand ui/textarea {:font-family ui/font-code}),
+       :disabled true,
+       :value code}))
     (when dev? (comp-inspect "Store" store {}))
     (when dev? (comp-reel (>> states :reel) reel {})))))
