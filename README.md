@@ -1,11 +1,11 @@
 ## Snippet Splitter Tool
 
 > Small tool for splitting snippets
-> http://repo.tiye.me/jimengio/snippet-splitter/
+> http://r.tiye.me/worktools/snippet-splitter/
 
 ### Workflow
 
-Workflow https://github.com/mvc-works/calcit-workflow
+Workflow https://github.com/calcit-lang/respo-calcit-workflow
 
 ### License
 
