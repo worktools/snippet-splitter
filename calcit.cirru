@@ -18,7 +18,9 @@
                 states $ decode-map-as
                   option:unwrap $ get store :states
                   :: 'Map 'Tag 'Dynamic
-                state $ schema/normalize-state $ option:unwrap-or (get states :data) schema/initial-state
+                state $ match (get states :data)
+                  (:some data) (schema/normalize-state data)
+                  (:none) schema/initial-state
                 code $ draft->json $ :draft state
               div
                 {} $ :style $ merge ui/global ui/fullscreen ui/column
@@ -58,7 +60,7 @@
           :code $ quote $ defn draft->json (draft)
             decode-map-as
               js/JSON.stringify
-                to-js-data $ .split draft &newline
+                to-js-data $ .split-lines draft
                 , nil 2
               , 'String
           :examples $ []
@@ -68,11 +70,11 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.core :as ui)
-            respo.core :refer $ [] defcomp >> div button textarea span
-            reel.comp.reel :refer $ [] comp-typed-reel
-            app.config :refer $ [] dev?
+            respo.core :refer $ defcomp >> div button textarea span
+            reel.comp.reel :refer $ comp-typed-reel
+            app.config :refer $ dev?
             app.schema :as schema
-            respo.comp.inspect :refer $ [] comp-inspect
+            respo.comp.inspect :refer $ comp-inspect
             |copy-text-to-clipboard :default copy
     'app.config $ %{} 'FileEntry
       :defs $ {}
@@ -91,27 +93,27 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
-            assert-type (typed/new-reel schema/store)
-              :: 'reel.typed/State 'app.schema/Op $ :: 'Map 'Tag 'Dynamic
+          :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
           :schema $ :: 'Ref $ :: 'reel.typed/State 'app.schema/Op (:: 'Map 'Tag 'Dynamic)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            when config/dev? $ println |Dispatch: op
-            match (typed/decode-control op)
-              (:some control)
-                reset! *reel $ typed/apply-control updater @*reel control
-              (:none)
-                reset! *reel $ typed/record-op updater @*reel (schema/normalize-op op) (generate-id!) (host/now-ms)
+            if (enum? op)
+              match (typed/decode-control op)
+                (:some control)
+                  reset! *reel $ typed/apply-control updater @*reel control
+                (:none)
+                  reset! *reel $ typed/record-op updater @*reel (schema/normalize-op op) (generate-id!) (host/now-ms)
+              raise |expected-splitter-operation
+            , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Enum
+            :args $ [] 'Dynamic
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             render-app!
-            add-watch *reel :changes $ fn (r p) (render-app!)
+            add-watch! *reel :changes $ fn (r p) (render-app!)
             listen-devtools! |a dispatch!
             browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             browser/set-interval! persist-storage! 60000
@@ -127,9 +129,9 @@
             :features $ #{} :js-ffi
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
-            option:unwrap $ browser/query-selector |.app
+            .unwrap $ respo-dom/query-selector |.app
           :examples $ []
-          :schema $ :: 'js-ffi.browser/DomElementHost
+          :schema $ :: 'respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             browser/storage-set!
@@ -141,8 +143,8 @@
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (js-nullish? build-errors)
-              do (remove-watch *reel :changes) (clear-cache!)
-                add-watch *reel :changes $ fn (reel prev) (render-app!)
+              do (remove-watch! *reel :changes) (clear-cache!)
+                add-watch! *reel :changes $ fn (reel prev) (render-app!)
                 reset! *reel $ typed/refresh updater @*reel schema/store
                 hud! |ok~ |Ok
               hud! |error build-errors
@@ -153,25 +155,28 @@
             :features $ #{} :js-ffi
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
-            render! mount-target (comp-container @*reel) dispatch!
+            render-with! mount-target
+              fn () $ comp-container @*reel
+              , dispatch!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ []
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
-            respo.core :refer $ [] render! clear-cache!
-            respo.util :refer $ [] generate-id!
-            app.comp.container :refer $ [] comp-container
-            app.updater :refer $ [] updater
+            respo.core :refer $ render-with! clear-cache!
+            respo.util :refer $ generate-id!
+            app.comp.container :refer $ comp-container
+            app.updater :refer $ updater
             app.schema :as schema
-            reel.util :refer $ [] listen-devtools!
+            reel.util :refer $ listen-devtools!
             reel.typed :as typed
             app.config :as config
             js-ffi.browser :as browser
             js-ffi.shared :as host
-            |./calcit.build-errors :default build-errors
+            |./calcit.build-errors.mjs :default build-errors
             |bottom-tip :default hud!
+            respo.ffi.browser :as respo-dom
     'app.schema $ %{} 'FileEntry
       :defs $ {}
         'DraftState $ %{} 'CodeEntry (:doc |)
@@ -207,7 +212,8 @@
         'normalize-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
-              if (&struct:matches? data DraftState) (assert-type data 'app.schema/DraftState) (raise |expected-draft-state)
+              struct-match data (DraftState value value)
+                _ _ $ raise |expected-draft-state
               decode-map-as data 'app.schema/DraftState
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/DraftState)
@@ -238,4 +244,4 @@
             :return $ :: 'Map 'Tag 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require $ [] respo.cursor :refer $ [] update-states
+          :require $ respo.cursor :refer $ update-states
