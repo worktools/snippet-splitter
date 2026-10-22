@@ -47,8 +47,8 @@ jobs:
           test ! -e package.cirru
           calcit edit transaction --code '[["edit","format"]]' --dry-run --format json | jq -e '.changed == false'
           calcit --check-only --all-defs
-          calcit fix --workflow strict --verify
-          calcit analyze check-public --ns app.main --ns app.comp.container --ns app.config --ns app.schema --ns app.updater --summary-only --format json
+          calcit fix --workflow strict --verify --format json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+          calcit --check-only --ns app.main --ns app.comp.container --ns app.config --ns app.schema --ns app.updater --summary-only --format json
       - name: Select frontend CDN path
         id: asset-path
         env:
@@ -63,8 +63,16 @@ jobs:
           echo "base-url=https://cos-sh.tiye.me/${asset_prefix}" >> "$GITHUB_OUTPUT"
       - name: Build frontend
         env:
-          VITE_BASE_URL: ${{ steps.asset-path.outputs.base-url }}
+          VITE_BASE_URL: ${{ github.event_name == 'pull_request' && './' || steps.asset-path.outputs.base-url }}
         run: yarn build
+      - name: Save PR frontend for local acceptance
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 3
       - name: Upload and verify frontend
         if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
         timeout-minutes: 10
