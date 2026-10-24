@@ -5,7 +5,9 @@
 
 ### Workflow
 
-使用者影响：迁移到配套正式 Calcit CLI / `@calcit/procs` **0.30.1**，使用 Node.js 24 和 Yarn 4.18.0。Respo 0.16.124、Reel 0.6.41、UI 0.8.0、JS-FFI 0.2.5 均固定正式 tag；传递 Router 0.8.37。升级后完整刷新，UI 0.8 的基础样式可能改变外观。
+使用者影响：继续配套正式 Calcit CLI / `@calcit/procs` **0.30.1**，使用 Node.js 24 和 Yarn 4.18.0。Respo 0.16.126、Reel 0.6.42、UI 0.8.1、JS-FFI 0.2.6 均固定正式 tag；传递 Router 0.8.38，Vite 固定 8.3.3。请重新安装依赖、生成 JS 并完整刷新，不混用旧 alpha 缓存。
+
+旧 Map `merge`、Option `unwrap` / `unwrap-or` 改为方法调用；原默认值、求值顺序与存储内容不变。Copy / 输入的两个 DOM 回调补实际 `EventHandler` 合同（Map<Tag,Dynamic>、Fn<Dynamic,Unit,rest Dynamic>、Unit），输入仍显式检查 String，不假装开放 UI 事件已经变成封闭业务 Op。数值 padding 按原渲染规则改成等价 `8px`，不改变尺寸。真实 `hud!` 及错误展示保留，不替换为 raise；不新增强转、预算或永久验证脚本。
 
 启动时先恢复原存档，再渲染、注册自动保存；解析失败会在保存监听和定时器注册之前停止启动，避免随后覆盖原值。合法 Map 的既有字段原样保留，不换 storage key、不替换业务默认值。这是启动顺序修复，不代表已覆盖所有损坏存档场景。
 
