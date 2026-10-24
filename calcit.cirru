@@ -16,33 +16,42 @@
                 store $ :store reel
                 cursor $ []
                 states $ decode-map-as
-                  option:unwrap $ get store :states
+                  .unwrap $ get store :states
                   :: 'Map 'Tag 'Dynamic
                 state $ match (get states :data)
                   (:some data) (schema/normalize-state data)
                   (:none) schema/initial-state
                 code $ draft->json $ :draft state
               div
-                {} $ :style $ merge ui/global ui/fullscreen ui/column
+                {} $ :style $ .merge ui/global ui/fullscreen ui/column
                 div
-                  {} $ :style $ merge ui/row-parted
-                    {} $ :padding 8
+                  {} $ :style $ .merge ui/row-parted
+                    {} $ :padding |8px
                   span $ {}
                   button $ {} (:style ui/button) (:inner-text |Copy)
-                    :on-click $ fn (e d!) (copy-code! code)
+                    :on-click $ fn (e d!)
+                      hint-fn $ {} (:return 'Unit)
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:return 'Unit) (:rest 'Dynamic)
+                            :args $ [] 'Dynamic
+                      copy-code! code
                 div
-                  {} $ :style $ merge ui/expand ui/row
+                  {} $ :style $ .merge ui/expand ui/row
                   textarea $ {}
-                    :style $ merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
+                    :style $ .merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
                     :value $ :draft state
                     :on-input $ fn (e d!)
+                      hint-fn $ {} (:return 'Unit)
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:return 'Unit) (:rest 'Dynamic)
+                            :args $ [] 'Dynamic
                       d! $ :: :states cursor $ assoc state :draft
                         decode-map-as
-                          option:unwrap $ get e :value
+                          .unwrap $ get e :value
                           , 'String
                     :placeholder "|code to split..."
                   textarea $ {}
-                    :style $ merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
+                    :style $ .merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
                     :disabled true
                     :value code
                 when dev? $ comp-inspect |Store store $ {}
@@ -80,7 +89,7 @@
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def dev?
-            = |dev $ option:unwrap-or (get-env |mode) |release
+            = |dev $ .unwrap-or (get-env |mode) |release
           :examples $ []
           :schema $ :: 'Bool
         'site $ %{} 'CodeEntry (:doc |)
@@ -113,7 +122,7 @@
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             match
-              browser/storage-get $ option:unwrap $ get config/site :storage-key
+              browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some raw)
                 dispatch! $ :: :hydrate-storage $ parse-cirru-edn raw
               (:none) &unit
@@ -135,7 +144,7 @@
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             browser/storage-set!
-              option:unwrap $ get config/site :storage-key
+              .unwrap $ get config/site :storage-key
               format-cirru-edn $ :store @*reel
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
