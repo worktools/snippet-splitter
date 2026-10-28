@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |js-ffi/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -174,7 +174,6 @@
         :code $ quote $ ns app.main
           :require
             respo.core :refer $ render-with! clear-cache!
-            respo.util :refer $ generate-id!
             app.comp.container :refer $ comp-container
             app.updater :refer $ updater
             app.schema :as schema
@@ -188,6 +187,10 @@
             respo.ffi.browser :as respo-dom
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'DispatchOp $ %{} 'CodeEntry (:doc "|Respo 入口的 Enum 合同，容纳业务事件和 Reel 控制事件；代表值不发送。")
+          :code $ quote $ def DispatchOp (:: :unhandled)
+          :examples $ []
+          :schema $ :: 'Enum
         'DraftState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct DraftState (:draft 'String)
           :examples $ []
@@ -222,11 +225,18 @@
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
               struct-match data (DraftState value value)
-                _ _ $ raise |expected-draft-state
+                _ _ $ if
+                  = (&struct:get-name data) :DraftState
+                  decode-map-as (&struct:to-map data) 'app.schema/DraftState
+                  raise |expected-draft-state
               decode-map-as data 'app.schema/DraftState
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/DraftState)
             :args $ [] 'Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |persisted-draft-roundtrip)
+            :code $ quote $ let
+                draft $ DraftState :draft "|031 合成文本 🐈\n\n\"quoted\"\n"
+              assert= draft $ normalize-state $ parse-cirru-edn (format-cirru-edn draft)
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             {}
