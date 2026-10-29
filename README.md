@@ -5,7 +5,7 @@
 
 ### Workflow
 
-使用者影响：CLI / `@calcit/procs` 配对正式 **0.31.0**，Node.js 24、Yarn 4.18.0。Respo **0.17.0-alpha.4**、Reel **0.7.0-alpha.4**、UI **0.9.0-alpha.4**、JS-FFI **0.2.7** 使用精确已发布 tag；传递 Router **0.9.0-alpha.3**，其中 UI 库仍为预发布版。请重装依赖、重新构建并刷新。修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
+使用者影响：本轮候选配对正式 Calcit / `@calcit/procs` **0.32.0**，Node.js 24、Yarn 4.18.0。依赖目标为 Respo **0.17.0**、Reel **0.7.0**、UI **0.9.0**、JS FFI **0.2.8**，传递 Router **0.9.0**。Respo 系列目前使用本地候选联调，待正式 tag 发布后还需 Caps 严格安装与远端 CI；不将本地候选视为已发布图。请重装依赖、重新构建并刷新。此前 0.31.0 已修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
 
 旧 Map `merge`、Option `unwrap` / `unwrap-or` 改为方法调用；原默认值、求值顺序与存储内容不变。Copy / 输入的两个 DOM 回调保留原开放事件边界（Map<Tag,Dynamic>、Fn<Dynamic,Unit,rest Dynamic>、Unit），输入仍显式检查 String，不假装开放 UI 事件已经变成封闭业务 Op。数值 padding 按原渲染规则改成等价 `8px`，不改变尺寸。真实 `hud!` 及错误展示保留，不替换为 raise；不新增强转、预算或永久验证脚本。
 
@@ -42,4 +42,12 @@ Workflow https://github.com/calcit-lang/respo-calcit-workflow
 
 MIT
 
-本次 0.31.0 候选通过 200/200 全定义、20/20 公开定义、完整 strict 与构建。实际页面的中文/emoji/引号/中间空行/末尾换行分割正常；修复后同一份合成存档连续刷新两次恢复。不操作系统剪贴板，不把此验收扩大为所有坏存档或生产部署证明。
+此前 0.31.0 候选通过 200/200 全定义、20/20 公开定义、完整 strict 与构建。实际页面的中文/emoji/引号/中间空行/末尾换行分割正常；修复后同一份合成存档连续刷新两次恢复。不操作系统剪贴板，不把此验收扩大为所有坏存档或生产部署证明。
+
+### 本轮 0.32.0 验收
+
+官方 format 迁移 4 处类型表述，20 个定义的 schema 和原附属测试不变。
+全 200 定义、完整 strict（diagnostics 为空）、20 个公开定义、原持久化回归、构建及 immutable 安装通过。
+隔离页面以中文/emoji/引号/中间空行/尾部换行验证四行 JSON 输出，连续两次刷新保留原文本和输出，浏览器无 warning/error。
+未点击复制或操作系统剪贴板，未重新验证坏存档、60 秒定时保存和开发工具。
+独立只读评审未发现新增问题。原门禁与部署条件保留，Actions 使用已核对的精确正式 tag；移除旧 runtime 包龄例外，统一一小时门禁。未部署。
