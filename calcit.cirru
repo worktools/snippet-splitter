@@ -17,7 +17,7 @@
                 cursor $ []
                 states $ decode-map-as
                   .unwrap $ get store :states
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 state $ match (get states :data)
                   (:some data) (schema/normalize-state data)
                   (:none) schema/initial-state
@@ -30,8 +30,8 @@
                   span $ {}
                   button $ {} (:style ui/button) (:inner-text |Copy)
                     :on-click $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
-                        Fn Dynamic & Dynamic $ -> Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn AnyEnum $ -> Unit
                         -> Unit
                       copy-code! code
                 div
@@ -40,20 +40,22 @@
                     :style $ .merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
                     :value $ :draft state
                     :on-input $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
-                        Fn Dynamic & Dynamic $ -> Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn AnyEnum $ -> Unit
                         -> Unit
                       d! $ :: :states cursor $ assoc state :draft
-                        decode-map-as
-                          .unwrap $ get e :value
-                          , 'String
+                        decode-map-as (:value e) 'String
                     :placeholder "|code to split..."
                   textarea $ {}
                     :style $ .merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
                     :disabled true
                     :value code
-                when dev? $ comp-inspect |Store store $ {}
-                when dev? $ comp-typed-reel (>> states :reel) reel $ {}
+                if dev?
+                  Option :some $ comp-inspect |Store store $ {}
+                  Option :none
+                if dev?
+                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
+                  Option :none
           :examples $ []
           :schema $ quote $ Fn
             reel.typed/State app.schema/Op $ Map Tag Dynamic
@@ -103,16 +105,14 @@
             reel.typed/State app.schema/Op $ Map Tag Dynamic
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            if (enum? op)
-              match (typed/decode-control op)
-                (:some control)
-                  reset! *reel $ typed/apply-control updater @*reel control
-                (:none)
-                  reset! *reel $ typed/record-op updater @*reel (schema/normalize-op op) (generate-id!) (host/now-ms)
-              raise |expected-splitter-operation
+            match (typed/decode-control op)
+              (:some control)
+                reset! *reel $ typed/apply-control updater @*reel control
+              (:none)
+                reset! *reel $ typed/record-op updater @*reel (schema/normalize-op op) (generate-id!) (host/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit)
+          :schema $ quote $ Fn AnyEnum (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -179,18 +179,16 @@
         'DispatchOp $ %{} 'CodeEntry (:doc "|Respo 入口的 Enum 合同，容纳业务事件和 Reel 控制事件；代表值不发送。")
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
-          :schema $ quote Enum
+          :schema $ quote AnyEnum
         'DraftState $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct DraftState (:draft 'String)
+          :code $ quote $ defstruct DraftState (:draft String)
           :examples $ []
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states
-              quote $ List Dynamic
-              , 'Dynamic
-            :hydrate-storage $ quote $ Map Tag Dynamic
-            :input 'String
+            :states (List respo.schema/CoordKey) Dynamic
+            :hydrate-storage $ Map Tag Dynamic
+            :input String
           :examples $ []
           :schema $ quote EnumDef
         'initial-state $ %{} 'CodeEntry (:doc |)
@@ -202,15 +200,15 @@
             match op
               (:states cursor data)
                 Op :states
-                  decode-map-as cursor $ :: 'List 'Dynamic
+                  decode-map-as cursor $ List respo.schema/CoordKey
                   , data
               (:hydrate-storage data)
-                Op :hydrate-storage $ decode-map-as data $ :: 'Map 'Tag 'Dynamic
+                Op :hydrate-storage $ decode-map-as data $ Map Tag Dynamic
               (:input value)
                 Op :input $ decode-map-as value 'String
               _ $ raise |unknown-splitter-operation
           :examples $ []
-          :schema $ quote $ Fn Enum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
         'normalize-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
@@ -243,7 +241,7 @@
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:states cursor data)
-                decode-map-as (update-states store cursor data) (:: 'Map 'Tag 'Dynamic)
+                decode-map-as (update-states store cursor data) (Map Tag Dynamic)
               (:hydrate-storage data) data
               (:input value) (assoc store :snippet value)
           :examples $ []

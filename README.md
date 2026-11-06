@@ -5,9 +5,9 @@
 
 ### Workflow
 
-使用者影响：本项目配对正式 Calcit / `@calcit/procs` **0.32.1**，Node.js 24、Yarn 4.18.0。使用已发布 Respo **0.17.1**、Reel **0.7.0**、UI **0.9.0**、JS FFI **0.2.9** 的真实 Caps 严格依赖图；UI 正式版固定的传递 Router 仍为精确 **0.9.0-alpha.4**，不混入本地候选或 hash 依赖。请重装依赖、重新构建并刷新。此前 0.31.0 已修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
+升级后重新安装依赖、构建并刷新。使用正式 Calcit / `@calcit/procs` 0.35.1、Node 24 和 Yarn 4.18.0，正式依赖为 Respo 0.19.4、Reel 0.9.2、UI 0.15.1、JS FFI 0.2.13 和 Router 0.12.1。此前 0.31.0 已修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
 
-旧 Map `merge`、Option `unwrap` / `unwrap-or` 改为方法调用；原默认值、求值顺序与存储内容不变。Copy / 输入的两个 DOM 回调保留原开放事件边界（Map<Tag,Dynamic>、Fn<Dynamic,Unit,rest Dynamic>、Unit），输入仍显式检查 String，不假装开放 UI 事件已经变成封闭业务 Op。数值 padding 按原渲染规则改成等价 `8px`，不改变尺寸。真实 `hud!` 及错误展示保留，不替换为 raise；不新增强转、预算或永久验证脚本。
+旧 Map `merge`、Option `unwrap` / `unwrap-or` 改为方法调用；原默认值、求值顺序与存储内容不变。复制与输入回调使用 RespoEvent 和单参数 AnyEnum 派发。输入仍显式检查 String，状态路径使用 CoordKey。数值 padding 按原渲染规则改成等价 `8px`，不改变尺寸。真实 `hud!` 及错误展示保留，不替换为 raise；不新增强转、预算或永久验证脚本。
 
 启动时先恢复原存档，再渲染、注册自动保存；解析失败会在保存监听和定时器注册之前停止启动，避免随后覆盖原值。合法 Map 的既有字段原样保留，不换 storage key、不替换业务默认值。这是启动顺序修复，不代表已覆盖所有损坏存档场景。
 
@@ -24,7 +24,7 @@ yarn build
 
 `yarn dev` compiles the default JS entry once and starts Vite. Run `calcit calcit.cirru -w` in another terminal for live edits; no process orchestration dependency is needed. `yarn build` remains a one-shot compile and build.
 
-The entry binds Respo dispatch-op to the application Enum contract, accommodating business and Reel control events. The existing open dispatch boundary still checks enum? before decoding; this does not claim all DOM callbacks are closed. The obsolete respo.util/generate-id! import is removed; calls still resolve to the builtin.
+The entry binds Respo dispatch to AnyEnum, then decodes business operations and Reel control events. The obsolete respo.util/generate-id! import is removed; calls still resolve to the builtin.
 
 `DraftState` has a String draft; typed `Op` and Reel replace the old tag/payload dispatch. Existing Map drafts, local nominal drafts and decoded same-name archived drafts load through the checked state boundary; `struct-match` preserves local instances, while external fields are decoded before reconstruction. The Reel initializer uses its declared generic context, not an unproved assertion. Watchers use `add-watch!`/`remove-watch!`, and rendering uses the existing managed memo frame and public Respo DOM query API. Persistence still runs before unload and every 60 seconds; the old recursive timer fix remains.
 
@@ -44,7 +44,7 @@ MIT
 
 此前 0.31.0 候选通过 200/200 全定义、20/20 公开定义、完整 strict 与构建。实际页面的中文/emoji/引号/中间空行/末尾换行分割正常；修复后同一份合成存档连续刷新两次恢复。不操作系统剪贴板，不把此验收扩大为所有坏存档或生产部署证明。
 
-### 本轮 0.32.1 验收
+### 此前 0.32.1 验收
 
 官方 program-diff 暂不能加载升级前 Git Snapshot 的旧类型语法（[Calcit #2503](https://github.com/calcit-lang/calcit/issues/2503)）；对照使用隔离历史副本经官方 format 后的逐定义视图，不绕过原门禁。
 
