@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |js-ffi/
-      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -14,7 +14,6 @@
           :code $ quote $ defcomp comp-container (reel)
             let
                 store $ :store reel
-                cursor $ []
                 states $ decode-map-as
                   .unwrap $ get store :states
                   Map Tag Dynamic
@@ -31,7 +30,7 @@
                   button $ {} (:style ui/button) (:inner-text |Copy)
                     :on-click $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn AnyEnum $ -> Unit
+                        Fn app.schema/Op $ -> Unit
                         -> Unit
                       copy-code! code
                 div
@@ -41,10 +40,9 @@
                     :value $ :draft state
                     :on-input $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn AnyEnum $ -> Unit
+                        Fn app.schema/Op $ -> Unit
                         -> Unit
-                      d! $ :: :states cursor $ assoc state :draft
-                        decode-map-as (:value e) 'String
+                      d! $ app.schema/Op :edit-draft $ decode-map-as (:value e) 'String
                     :placeholder "|code to split..."
                   textarea $ {}
                     :style $ .merge ui/expand ui/textarea $ {} (:font-family ui/font-code)
@@ -187,6 +185,7 @@
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
             :states (List respo.schema/CoordKey) Dynamic
+            :edit-draft String
             :hydrate-storage $ Map Tag Dynamic
             :input String
           :examples $ []
@@ -202,6 +201,8 @@
                 Op :states
                   decode-map-as cursor $ List respo.schema/CoordKey
                   , data
+              (:edit-draft draft)
+                app.schema/Op :edit-draft $ decode-map-as draft 'String
               (:hydrate-storage data)
                 Op :hydrate-storage $ decode-map-as data $ Map Tag Dynamic
               (:input value)
@@ -242,11 +243,25 @@
             match op
               (:states cursor data)
                 decode-map-as (update-states store cursor data) (Map Tag Dynamic)
+              (:edit-draft draft)
+                recur store
+                  app.schema/Op :states ([]) (app.schema/DraftState :draft draft)
+                  , op-id op-time
               (:hydrate-storage data) data
               (:input value) (assoc store :snippet value)
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) app.schema/Op String Number
             -> $ Map Tag Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |typed-draft-keeps-legacy-state)
+            :code $ quote $ let
+                draft "||文本 🐈\\n\""
+                state $ app.schema/DraftState :draft draft
+              assert=
+                updater app.schema/store
+                  app.schema/Op :states ([]) state
+                  , |id 0
+                updater app.schema/store (app.schema/Op :edit-draft draft) |id 0
+            :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ respo.cursor :refer $ update-states
