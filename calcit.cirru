@@ -103,25 +103,24 @@
             reel.typed/State app.schema/Op $ Map Tag Dynamic
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            match (typed/decode-control op)
-              (:some control)
-                reset! *reel $ typed/apply-control updater @*reel control
-              (:none)
-                reset! *reel $ typed/record-op updater @*reel (schema/normalize-op op) (generate-id!) (host/now-ms)
+            reset! *reel $ match op
+              (reel.typed/Control control) (typed/apply-control updater @*reel control)
+              (app.schema/Op action)
+                typed/record-op updater @*reel action (generate-id!) (host/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> Unit)
+          :schema $ quote $ Fn app.schema/ResolvedOp (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             match
               browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some raw)
-                dispatch! $ :: :hydrate-storage $ parse-cirru-edn raw
+                dispatch! $ schema/Op :hydrate-storage $ decode-map-as (parse-cirru-edn raw) (Map Tag Dynamic)
               (:none) &unit
             render-app!
             add-watch! *reel :changes $ fn (r p) (render-app!)
-            listen-devtools! |a dispatch!
+            listen-devtools-toggle! |a $ fn () $ dispatch! (reel.typed/Control :toggle)
             browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             browser/set-interval! persist-storage! 60000
             println "|App started."
@@ -154,7 +153,8 @@
           :code $ quote $ defn render-app! ()
             render-with! mount-target
               fn () $ comp-container @*reel
-              , dispatch!
+              fn (op)
+                dispatch! $ schema/normalize-op op
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
@@ -164,7 +164,7 @@
             app.comp.container :refer $ comp-container
             app.updater :refer $ updater
             app.schema :as schema
-            reel.util :refer $ listen-devtools!
+            reel.util :refer $ listen-devtools-toggle!
             reel.typed :as typed
             app.config :as config
             js-ffi.browser :as browser
@@ -190,26 +190,33 @@
             :input String
           :examples $ []
           :schema $ quote EnumDef
+        'ResolvedOp $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ResolvedOp app.schema/Op reel.typed/Control
+          :examples $ []
+          :schema $ quote UnionDef
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state (DraftState :draft |)
           :examples $ []
           :schema $ quote app.schema/DraftState
         'normalize-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-op (op)
-            match op
-              (:states cursor data)
-                Op :states
-                  decode-map-as cursor $ List respo.schema/CoordKey
-                  , data
-              (:edit-draft draft)
-                app.schema/Op :edit-draft $ decode-map-as draft 'String
-              (:hydrate-storage data)
-                Op :hydrate-storage $ decode-map-as data $ Map Tag Dynamic
-              (:input value)
-                Op :input $ decode-map-as value 'String
-              _ $ raise |unknown-splitter-operation
+            match (typed/decode-control op)
+              (:some control) control
+              (:none)
+                match op
+                  (:states cursor data)
+                    Op :states
+                      decode-map-as cursor $ List respo.schema/CoordKey
+                      , data
+                  (:edit-draft draft)
+                    Op :edit-draft $ decode-map-as draft 'String
+                  (:hydrate-storage data)
+                    Op :hydrate-storage $ decode-map-as data $ Map Tag Dynamic
+                  (:input value)
+                    Op :input $ decode-map-as value 'String
+                  _ $ raise |unknown-splitter-operation
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/ResolvedOp)
         'normalize-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
@@ -236,6 +243,7 @@
           :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
+          :require $ reel.typed :as typed
     'app.updater $ %{} 'FileEntry
       :defs $ {} $ 'updater
         %{} 'CodeEntry (:doc |)
