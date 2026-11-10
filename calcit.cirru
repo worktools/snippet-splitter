@@ -6,12 +6,12 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |js-ffi/
-      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/Op
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
         'comp-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-container (reel)
+          :code $ quote $ defcomp comp-container (reel on-control!)
             let
                 store $ :store reel
                 states $ decode-map-as
@@ -52,11 +52,12 @@
                   Option :some $ comp-inspect |Store store $ {}
                   Option :none
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
+                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control!
                   Option :none
           :examples $ []
           :schema $ quote $ Fn
             reel.typed/State app.schema/Op $ Map Tag Dynamic
+            Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
         'copy-code! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn copy-code! (code) (copy code) &unit
@@ -110,6 +111,10 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn app.schema/ResolvedOp (-> Unit)
+        'dispatch-event! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn dispatch-event! (op) (dispatch! op)
+          :examples $ []
+          :schema $ quote $ Fn app.schema/Op (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -131,6 +136,10 @@
             .unwrap $ respo-dom/query-selector |.app
           :examples $ []
           :schema $ quote respo.dom/DomElement
+        'on-control! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn on-control! (control) (dispatch! control)
+          :examples $ []
+          :schema $ quote $ Fn reel.typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             browser/storage-set!
@@ -152,9 +161,8 @@
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render-with! mount-target
-              fn () $ comp-container @*reel
-              fn (op)
-                dispatch! $ schema/normalize-op op
+              fn () $ comp-container @*reel on-control!
+              , dispatch-event!
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
@@ -174,10 +182,6 @@
             respo.ffi.browser :as respo-dom
     'app.schema $ %{} 'FileEntry
       :defs $ {}
-        'DispatchOp $ %{} 'CodeEntry (:doc "|Respo 入口的 Enum 合同，容纳业务事件和 Reel 控制事件；代表值不发送。")
-          :code $ quote $ def DispatchOp (:: :unhandled)
-          :examples $ []
-          :schema $ quote AnyEnum
         'DraftState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct DraftState (:draft String)
           :examples $ []
@@ -198,25 +202,6 @@
           :code $ quote $ def initial-state (DraftState :draft |)
           :examples $ []
           :schema $ quote app.schema/DraftState
-        'normalize-op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn normalize-op (op)
-            match (typed/decode-control op)
-              (:some control) control
-              (:none)
-                match op
-                  (:states cursor data)
-                    Op :states
-                      decode-map-as cursor $ List respo.schema/CoordKey
-                      , data
-                  (:edit-draft draft)
-                    Op :edit-draft $ decode-map-as draft 'String
-                  (:hydrate-storage data)
-                    Op :hydrate-storage $ decode-map-as data $ Map Tag Dynamic
-                  (:input value)
-                    Op :input $ decode-map-as value 'String
-                  _ $ raise |unknown-splitter-operation
-          :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/ResolvedOp)
         'normalize-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
@@ -243,7 +228,6 @@
           :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
-          :require $ reel.typed :as typed
     'app.updater $ %{} 'FileEntry
       :defs $ {} $ 'updater
         %{} 'CodeEntry (:doc |)
