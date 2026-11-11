@@ -30,7 +30,7 @@
                   button $ {} (:style ui/button) (:inner-text |Copy)
                     :on-click $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn app.schema/Op $ -> Unit
+                        Fn schema/Op $ -> Unit
                         -> Unit
                       copy-code! code
                 div
@@ -40,7 +40,7 @@
                     :value $ :draft state
                     :on-input $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn app.schema/Op $ -> Unit
+                        Fn schema/Op $ -> Unit
                         -> Unit
                       d! $ app.schema/Op :edit-draft $ decode-map-as (:value e) 'String
                     :placeholder "|code to split..."
@@ -210,7 +210,7 @@
                   raise |expected-draft-state
               decode-map-as data 'app.schema/DraftState
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> DraftState)
+          :schema $ quote $ Fn Input (-> DraftState) (:generics Input)
           :tests $ [] $ %{} 'TestEntry (:name |persisted-draft-roundtrip)
             :code $ quote $ let
                 draft $ DraftState :draft "|031 合成文本 🐈\n\n\"quoted\"\n"
