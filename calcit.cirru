@@ -49,14 +49,14 @@
                     :disabled true
                     :value code
                 if dev?
-                  Option :some $ comp-inspect |Store store $ {}
-                  Option :none
+                  Some $ comp-inspect |Store store $ {}
+                  , None
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control!
-                  Option :none
+                  Some $ comp-typed-reel (>> states :reel) reel ({}) on-control!
+                  , None
           :examples $ []
           :schema $ quote $ Fn
-            reel.typed/State app.schema/Op $ Map Tag Dynamic
+            reel.typed/State schema/Op $ Map Tag Dynamic
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
         'copy-code! $ %{} 'CodeEntry (:doc |)
@@ -101,7 +101,7 @@
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
           :schema $ quote $ Ref
-            reel.typed/State app.schema/Op $ Map Tag Dynamic
+            typed/State schema/Op $ Map Tag Dynamic
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             reset! *reel $ match op
@@ -110,11 +110,11 @@
                 typed/record-op updater @*reel action (generate-id!) (host/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/ResolvedOp (-> Unit)
+          :schema $ quote $ Fn schema/ResolvedOp (-> Unit)
         'dispatch-event! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-event! (op) (dispatch! op)
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Unit)
+          :schema $ quote $ Fn schema/Op (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -139,7 +139,7 @@
         'on-control! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-control! (control) (dispatch! control)
           :examples $ []
-          :schema $ quote $ Fn reel.typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             browser/storage-set!
@@ -187,9 +187,7 @@
           :examples $ []
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defenum Op
-            :states (List respo.schema/CoordKey) Dynamic
-            :edit-draft String
+          :code $ quote $ defenum Op (:edit-draft String)
             :hydrate-storage $ Map Tag Dynamic
             :input String
           :examples $ []
@@ -201,7 +199,7 @@
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state (DraftState :draft |)
           :examples $ []
-          :schema $ quote app.schema/DraftState
+          :schema $ quote DraftState
         'normalize-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-state (data)
             if (struct? data)
@@ -212,7 +210,7 @@
                   raise |expected-draft-state
               decode-map-as data 'app.schema/DraftState
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.schema/DraftState)
+          :schema $ quote $ Fn Dynamic (-> DraftState)
           :tests $ [] $ %{} 'TestEntry (:name |persisted-draft-roundtrip)
             :code $ quote $ let
                 draft $ DraftState :draft "|031 合成文本 🐈\n\n\"quoted\"\n"
@@ -233,12 +231,10 @@
         %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (store op op-id op-time)
             match op
-              (:states cursor data)
-                decode-map-as (update-states store cursor data) (Map Tag Dynamic)
               (:edit-draft draft)
-                recur store
-                  app.schema/Op :states ([]) (app.schema/DraftState :draft draft)
-                  , op-id op-time
+                decode-map-as
+                  update-states store ([]) (app.schema/DraftState :draft draft)
+                  Map Tag Dynamic
               (:hydrate-storage data) data
               (:input value) (assoc store :snippet value)
           :examples $ []
@@ -249,9 +245,7 @@
                 draft "||文本 🐈\\n\""
                 state $ app.schema/DraftState :draft draft
               assert=
-                updater app.schema/store
-                  app.schema/Op :states ([]) state
-                  , |id 0
+                assoc app.schema/store :states $ {} $ :data state
                 updater app.schema/store (app.schema/Op :edit-draft draft) |id 0
             :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)

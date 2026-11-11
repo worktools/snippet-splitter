@@ -5,7 +5,7 @@
 
 ### Workflow
 
-升级后重新安装依赖、构建并刷新。使用正式 Calcit / `@calcit/procs` 0.40.0、Node 24 和 Yarn 4.18.0，正式依赖为 Respo 0.19.5、Reel 0.11.0、UI 0.15.2、JS FFI 0.2.13 和 Router 0.12.2。此前 0.31.0 已修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
+升级后重新安装依赖、构建并刷新。使用正式 Calcit / `@calcit/procs` 0.41.0、Node 24 和 Yarn 4.18.0，正式依赖为 Respo 0.19.5、Reel 0.11.0、UI 0.15.2、JS FFI 0.2.13 和 Router 0.12.2。此前 0.31.0 已修复保存 draft 后刷新报 `expected-draft-state`：本地 DraftState 原对象直接保留；同名外部存档 Struct 转为字段 Map，完整检查后重建本地 DraftState，名称本身不代表可信身份。原文本、storage key、空行及尾部换行保留。
 
 旧 Map `merge`、Option `unwrap` / `unwrap-or` 改为方法调用；原默认值、求值顺序与存储内容不变。复制与输入回调使用 RespoEvent。应用派发接受具名业务操作或 Reel Control；Reel 面板通过独立的具名 Control 回调工作。输入仍显式检查 String，状态路径使用 CoordKey。数值 padding 按原渲染规则改成等价 `8px`，不改变尺寸。真实 `hud!` 及错误展示保留，不替换为 raise；不新增强转、预算或永久验证脚本。
 
