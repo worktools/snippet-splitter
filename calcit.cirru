@@ -54,6 +54,7 @@
           :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
+            :features :state
         'copy-code! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn copy-code! (code) (copy code) &unit
           :examples $ []
@@ -158,7 +159,7 @@
               fn () $ comp-container @*reel on-control!
               , dispatch-event!
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :state)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
