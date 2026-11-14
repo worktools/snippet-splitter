@@ -242,8 +242,9 @@
               (:hydrate-storage data) data
               (:input value) (assoc store :snippet value)
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) app.schema/Op String Number
+          :schema $ quote $ Fn (Map Tag V) app.schema/Op String Number
             -> $ Map Tag Dynamic
+            :generics V
           :tests $ [] $ %{} 'TestEntry (:name |typed-draft-keeps-legacy-state)
             :code $ quote $ let
                 draft "||文本 🐈\\n\""
