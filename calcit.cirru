@@ -14,9 +14,7 @@
           :code $ quote $ defcomp comp-container (reel on-control!)
             let
                 store $ :store reel
-                states $ decode-map-as
-                  .unwrap $ get store :states
-                  Map Tag Dynamic
+                states $ :states store
                 state $ schema/read-draft-state states
                 code $ draft->json $ :draft state
               div
@@ -53,8 +51,7 @@
                   Some $ comp-typed-reel (>> states :reel) reel ({}) on-control!
                   , None
           :examples $ []
-          :schema $ quote $ Fn
-            reel.typed/State schema/Op $ Map Tag Dynamic
+          :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
         'copy-code! $ %{} 'CodeEntry (:doc |)
@@ -98,8 +95,7 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ quote $ Ref
-            typed/State schema/Op $ Map Tag Dynamic
+          :schema $ quote $ Ref (typed/State schema/Op schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             reset! *reel $ match op
@@ -119,7 +115,7 @@
             match
               browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some raw)
-                dispatch! $ schema/Op :hydrate-storage $ decode-map-as (parse-cirru-edn raw) (Map Tag Dynamic)
+                dispatch! $ schema/Op :hydrate-storage $ schema/decode-store (parse-cirru-edn raw)
               (:none) &unit
             render-app!
             add-watch! *reel :changes $ fn (r p) (render-app!)
@@ -142,7 +138,7 @@
           :code $ quote $ defn persist-storage! ()
             browser/storage-set!
               .unwrap $ get config/site :storage-key
-              format-cirru-edn $ :store @*reel
+              format-cirru-edn $ schema/encode-store $ :store @*reel
           :examples $ []
           :schema $ quote $ Fn (-> Unit) (:features :state)
         'reload! $ %{} 'CodeEntry (:doc |)
@@ -184,20 +180,55 @@
           :code $ quote $ defstruct DraftState (:draft String)
           :examples $ []
           :schema $ quote StructDef
-        'InitialStoreField $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defunion InitialStoreField String (Map Tag DraftState) (List DraftState)
-          :examples $ []
-          :schema $ quote UnionDef
         'Op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defenum Op (:edit-draft String)
-            :hydrate-storage $ Map Tag Dynamic
-            :input String
+          :code $ quote $ defenum Op (:edit-draft String) (:hydrate-storage Store) (:input String)
           :examples $ []
           :schema $ quote EnumDef
         'ResolvedOp $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defunion ResolvedOp app.schema/Op reel.typed/Control
           :examples $ []
           :schema $ quote UnionDef
+        'Store $ %{} 'CodeEntry
+          :doc "|Typed component state with pass-through fields from the legacy archive."
+          :code $ quote $ defstruct Store
+            :states $ Map Tag Dynamic
+            :extra $ Map Tag Dynamic
+          :examples $ []
+          :schema $ quote StructDef
+        'decode-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-store (raw)
+            let
+                fields $ decode-map-as raw $ Map Tag Dynamic
+                states $ decode-map-as
+                  .unwrap $ get fields :states
+                  Map Tag Dynamic
+              Store :states states :extra $ dissoc fields :states
+          :examples $ []
+          :schema $ quote $ Fn T (-> Store) (:generics T)
+          :tests $ [] $ %{} 'TestEntry (:name |retains-legacy-extra-fields)
+            :code $ quote $ let
+                raw $ {} (:content |old) (:custom nil) (:snippet |example)
+                  :states $ {}
+                    :data $ {} $ :draft |saved
+                    :reel $ {} $ :expanded false
+                restored $ decode-store raw
+                edited $ app.updater/updater restored (Op :edit-draft |updated) |edit 0
+              assert= raw $ encode-store restored
+              assert= (DraftState :draft |saved)
+                read-draft-state $ :states restored
+              assert= (:extra restored) (:extra edited)
+              assert=
+                get (:states restored) :reel
+                get (:states edited) :reel
+              assert= (DraftState :draft |updated)
+                read-draft-state $ :states edited
+            :tags $ #{} :unit
+        'encode-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn encode-store (value)
+            assoc (:extra value) :states $ :states value
+          :examples $ []
+          :schema $ quote $ Fn Store
+            -> $ Map Tag Dynamic
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state (DraftState :draft |)
           :examples $ []
@@ -234,13 +265,10 @@
             :tags $ #{} :unit
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
-            {}
-              :states $ {}
-              :content |
-              :input |
+            Store :states ({}) :extra $ {} (:content |) (:input |)
               :records $ []
           :examples $ []
-          :schema $ quote $ Map Tag InitialStoreField
+          :schema $ quote Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -249,23 +277,19 @@
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:edit-draft draft)
-                decode-map-as
-                  update-states store ([]) (app.schema/DraftState :draft draft)
-                  Map Tag Dynamic
+                struct-with store $ :states $ assoc (:states store) :data (app.schema/DraftState :draft draft)
               (:hydrate-storage data) data
-              (:input value) (assoc store :snippet value)
+              (:input value)
+                struct-with store $ :extra $ assoc (:extra store) :snippet value
           :examples $ []
-          :schema $ quote $ Fn (Map Tag V) app.schema/Op String Number
-            -> $ Map Tag Dynamic
-            :generics V
+          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
           :tests $ [] $ %{} 'TestEntry (:name |typed-draft-keeps-legacy-state)
             :code $ quote $ let
                 draft "||文本 🐈\\n\""
                 state $ app.schema/DraftState :draft draft
               assert=
-                assoc app.schema/store :states $ {} $ :data state
-                updater app.schema/store (app.schema/Op :edit-draft draft) |id 0
+                assoc (app.schema/encode-store app.schema/store) :states $ {} $ :data state
+                app.schema/encode-store $ updater app.schema/store (app.schema/Op :edit-draft draft) |id 0
             :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require $ respo.cursor :refer $ update-states
