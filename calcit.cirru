@@ -17,9 +17,7 @@
                 states $ decode-map-as
                   .unwrap $ get store :states
                   Map Tag Dynamic
-                state $ match (get states :data)
-                  (:some data) (schema/normalize-state data)
-                  (:none) schema/initial-state
+                state $ schema/read-draft-state states
                 code $ draft->json $ :draft state
               div
                 {} $ :style $ .merge ui/global ui/fullscreen ui/column
@@ -219,6 +217,21 @@
             :code $ quote $ let
                 draft $ DraftState :draft "|031 合成文本 🐈\n\n\"quoted\"\n"
               assert= draft $ normalize-state $ parse-cirru-edn (format-cirru-edn draft)
+        'read-draft-state $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-draft-state (states)
+            match (get states :data)
+              (:some data) (normalize-state data)
+              (:none) initial-state
+          :examples $ []
+          :schema $ quote $ Fn (Map Tag V) (-> DraftState) (:generics V)
+          :tests $ [] $ %{} 'TestEntry (:name |reads-empty-legacy-and-nominal-drafts)
+            :code $ quote $ let
+                draft $ DraftState :draft |saved
+              assert= initial-state $ read-draft-state $ {}
+              assert= draft $ read-draft-state $ {}
+                :data $ {} $ :draft |saved
+              assert= draft $ read-draft-state $ {} (:data draft)
+            :tags $ #{} :unit
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             {}
