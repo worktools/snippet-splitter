@@ -186,6 +186,10 @@
           :code $ quote $ defstruct DraftState (:draft String)
           :examples $ []
           :schema $ quote StructDef
+        'InitialStoreField $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion InitialStoreField String (Map Tag DraftState) (List DraftState)
+          :examples $ []
+          :schema $ quote UnionDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op (:edit-draft String)
             :hydrate-storage $ Map Tag Dynamic
@@ -223,7 +227,7 @@
               :input |
               :records $ []
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag InitialStoreField
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
