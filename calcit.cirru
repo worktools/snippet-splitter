@@ -52,9 +52,9 @@
                   , None
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
-            Fn reel.typed/Control $ -> Unit
+            Fn reel.typed/Control (-> Unit) (:features :state)
             -> respo.schema/Component
-            :features :state
+            :features :io :js-ffi :state
         'copy-code! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn copy-code! (code) (copy code) &unit
           :examples $ []
@@ -152,7 +152,7 @@
               hud! |error build-errors
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi :state)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render-with! mount-target
