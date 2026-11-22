@@ -48,7 +48,7 @@
                   Some $ comp-inspect |Store store $ {}
                   , None
                 if dev?
-                  Some $ comp-typed-reel (>> states :reel) reel ({}) on-control!
+                  Some $ comp-controlled-reel reel ({}) on-control!
                   , None
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
@@ -71,8 +71,8 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.core :as ui)
-            respo.core :refer $ defcomp >> div button textarea span
-            reel.comp.reel :refer $ comp-typed-reel
+            respo.core :refer $ defcomp div button textarea span
+            reel.comp.reel :refer $ comp-controlled-reel
             app.config :refer $ dev?
             app.schema :as schema
             respo.comp.inspect :refer $ comp-inspect
